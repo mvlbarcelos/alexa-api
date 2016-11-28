@@ -1,0 +1,5 @@
+{
+  "lambda_arn": "arn:aws:lambda:us-west-2:604621407125:function:alexa-api", 
+  "app_name": "alexa-api", 
+  "stage": "dev"
+}
