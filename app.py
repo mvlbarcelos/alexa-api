@@ -1,55 +1,65 @@
 from chalice import Chalice
 import boto3
-import logging
 import json
+import uuid
 
-# logger=logging.getLogger()
 app = Chalice(app_name='alexa-api')
 app.debug = True
 
+def writeDynamo(data):
+	dynamodb = boto3.resource('dynamodb')
+	table = dynamodb.Table('fiainteractions')
+	table.put_item(Item=data)
+	pass
+
 def confirmation(data):
+	id = data['request']['intent']['slots']['eventId']['value']
 	ret = {'version':'1.0', 'response': {
-    'outputSpeech': {
-      'type': 'PlainText',
-      'text': 'Your confirmation mtf'
-    }}}
+	'outputSpeech': {
+	  'type': 'PlainText',
+	  'text': 'Event id %s is Confirmed' % id
+	}}}
+	x = {'eventId': id,
+	'status': 'CONFIRMED',
+	'id': str(uuid.uuid1())}
+	
+	writeDynamo(x)
 	return ret
 
-actions = {'NewConfirmation': confirmation}
+def notConfirmed(data):
+	id = data['request']['intent']['slots']['eventId']['value']
+	ret = {'version':'1.0', 'response': {
+	'outputSpeech': {
+	  'type': 'PlainText',
+	  'text': 'Event id %s Not Confirmed' % id
+	}}}
+	x = {'eventId': id,
+		 'status': 'NOT_CONFIRMED',
+		 'id': str(uuid.uuid1())}
+
+	writeDynamo(x)
+	return ret
+
+def default(data):
+	ret = {'version':'1.0', 'response': {
+	'outputSpeech': {
+	  'type': 'PlainText',
+	  'text': 'What did you say?'
+	}}}
+	return ret
+
+actions = {'NewConfirmation': confirmation,
+		  'NewDisconfirmation': notConfirmed,
+		  'default': default}
 
 @app.route('/alexa', methods=['POST'])
 def alexa():
-	# data = app.current_request.json_body
 	data = json.loads(app.current_request.raw_body)
-	intentName = data['request']['intent']['name']
+	intentName = data['request'].get('intent', {'name': 'default'})['name']
 	x = actions[intentName](data)
-	print x
+	print data
 	# dynamodb = boto3.resource('dynamodb')
 	# table = dynamodb.Table('fiainteractions')
 	# table.put_item(Item=data)
 	
 	return x
-
-
-
-# The view function above will return {'hello': 'world'}
-# whenver you make an HTTP GET request to '/'.
-#
-# Here are a few more examples:
-#
-# @app.route('/hello/{name}')
-# def hello_name(name):
-#    # '/hello/james' -> {'hello': 'james'}
-#    return {'hello': name}
-#
-# @app.route('/users', methods=['POST'])
-# def create_user():
-#     # This is the JSON body the user sent in their POST request.
-#     user_as_json = app.json_body
-#     # Suppose we had some 'db' object that we used to
-#     # read/write from our database.
-#     # user_id = db.create_user(user_as_json)
-#     return {'user_id': user_id}
-#
-# See the README documentation for more examples.
-#
